@@ -43,7 +43,7 @@ config.Data.useParent                   = False
 # dataset dependent configuration
 
 config.JobType.psetName     = 'ConfFile_cfg.py'
-config.General.requestName = 'data'
+config.General.requestName = 'EGamma0_Run2023C'
 config.Data.unitsPerJob    = 5
 
 ### to initiate the data transfer - 11th Dec, 2023

@@ -52,6 +52,7 @@
 #include "CondFormats/EcalObjects/interface/EcalPFRecHitThresholds.h"
 #include "CondFormats/DataRecord/interface/EcalPFRecHitThresholdsRcd.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/VertexReco/interface/Vertex.h"
 
 #include <TTree.h>
 #include <TLorentzVector.h>
@@ -111,23 +112,36 @@ class ECALTimeSampleAnalyser : public edm::one::EDAnalyzer<edm::one::SharedResou
       edm::ESGetToken<EcalPedestals, EcalPedestalsRcd> pedsToken_;
       edm::ESHandle<EcalGainRatios> gains;
       edm::ESGetToken<EcalGainRatios, EcalGainRatiosRcd> gainsToken_;
-
+  edm::EDGetTokenT<reco::VertexCollection>         vtxLabel_;
+  edm::EDGetTokenT<double>                         rhoLabel_;
+  
   //const std::string ebdigiProducer_;
 
   TTree   *treeEle;
   TTree   *treePho;
 
-  double eleEta_, elePhi_, elePt_, eleE_;
-  double e5x5_; 
-  int nCrys_;
-  int nsamples_;
+  std::vector<double> eleEta_;
+  std::vector<double> elePhi_;
+  std::vector<double> elePt_;
+  std::vector<double> eleE_;
+  std::vector<double> eleSCEta_;
+  std::vector<double> eleSCPhi_;
+  
+  std::vector<double> e5x5_; 
+  std::vector<int> nCrys_;
+  int  nsamples_;
   //double genPt_, genEta_, genPhi_, gendR_, genE_, genStatus_;
   //std::vector<std::array<double, NMAXSAMPLES> > hitsAmplitudes_;
   //std::vector<std::array<double, 10> > hitsAmplitudes_;
   //double hitsAmplitudes_[NMAXCRYS][NMAXSAMPLES];
-  std::vector<std::vector<double>> hitsAmplitudes_;
-  std::vector<double> hitsEnergy_;
-  std::vector<double> hitsEnergyWeight_;
+  std::vector<std::vector<std::vector<double>>> hitsAmplitudes_;
+  //std::vector<std::map<int,std::vector<double>>> hitsAmplitudes_;
+  std::vector<std::vector<double>> hitsEnergy_;
+  std::vector<std::vector<double>> hitsEnergyWeight_;
+
+  Int_t       nVtx_;
+  float       rho_;
+  
   //std::vector<double> hitsThr_;
 
   //edm::EDGetTokenT<std::vector<reco::GenParticle> > genParticlesCollection_;
@@ -160,6 +174,8 @@ ECALTimeSampleAnalyser::ECALTimeSampleAnalyser(const edm::ParameterSet& iConfig)
   ebRecHitCollectionWeight_ = consumes<EcalRecHitCollection>          (iConfig.getParameter<edm::InputTag>("ebRecHitWeightCollection"));
   eeRecHitCollectionWeight_ = consumes<EcalRecHitCollection>          (iConfig.getParameter<edm::InputTag>("eeRecHitWeightCollection"));
 
+  rhoLabel_                  = consumes<double>(iConfig.getParameter<edm::InputTag>("rhoLabel"));
+  vtxLabel_                  = consumes<reco::VertexCollection>        (iConfig.getParameter<edm::InputTag>("VtxLabel"));
   
   //esRecHitCollection_ = consumes<EcalRecHitCollection>          (iConfig.getParameter<edm::InputTag>("esRecHitCollection"));
   
@@ -198,15 +214,45 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
    using namespace edm;
 
-   eleEta_ = -99;
-   elePhi_ = -99;
-   elePt_ = -99.;
-   eleE_ = -99;
-   nCrys_ = -99;
-   e5x5_ = -99;
+   eleEta_.clear();
+   elePhi_.clear();
+
+   eleSCEta_.clear();
+   eleSCPhi_.clear();
+   
+   elePt_.clear();
+   eleE_.clear();
+   nCrys_.clear();
+   e5x5_.clear();
+   
+   // Iterate over each element of the outer vector
+   for (auto& outerVec : hitsAmplitudes_) {
+     // Iterate over each element of the middle vector
+     for (auto& middleVec : outerVec) {
+       // Clear each inner vector
+       middleVec.clear();
+     }
+     // Clear the middle vector
+     outerVec.clear();
+   }
+   // Clear the outer vector
    hitsAmplitudes_.clear();
+   
+   
+ 
+   
    hitsEnergy_.clear();
+   // Iterate through each inner vector and clear them
+   for (auto& innerVec : hitsEnergy_) {
+     innerVec.clear();
+   }
+   
    hitsEnergyWeight_.clear();
+   // Iterate through each inner vector and clear them
+   for (auto& innerVec : hitsEnergyWeight_) {
+     innerVec.clear();
+   }
+ 
    //hitsThr_.clear();
 
    //hitsAmplitudes_.clear();
@@ -219,7 +265,38 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
    peds = iSetup.getHandle(pedsToken_);
 
 
-   //// nominal ECAL rechits from multifit method
+   ///
+   edm::Handle<double> rhoHandle;
+   iEvent.getByToken(rhoLabel_, rhoHandle);
+  
+   rho_    = *(rhoHandle.product());
+   
+   edm::Handle<reco::VertexCollection> vtxHandle;
+   iEvent.getByToken(vtxLabel_, vtxHandle);
+   
+   nVtx_     = -1;
+   if (vtxHandle.isValid()) {
+     nVtx_     = 0;
+     
+     for (std::vector<reco::Vertex>::const_iterator v = vtxHandle->begin(); v != vtxHandle->end(); ++v) {
+
+       /*
+       if (nVtx_ == 0) {
+	 vtx_     = v->x();
+	 vty_     = v->y();
+	 vtz_     = v->z();
+	 
+	 isPVGood_ = false;
+	 if (!v->isFake() && v->ndof() > 4. && fabs(v->z()) <= 24. && fabs(v->position().rho()) <= 2.) isPVGood_ = true;
+       }
+       */
+       //if (!v->isFake() && v->ndof() > 4. && fabs(v->z()) <= 24. && fabs(v->position().rho()) <= 2.) nGoodVtx_++;
+       nVtx_++;
+     }
+   } else
+     edm::LogWarning("ggNtuplizer") << "Primary vertices info not unavailable";
+   
+  //// nominal ECAL rechits from multifit method
    edm::Handle<EcalRecHitCollection> barrelRecHitsHandle;
    edm::Handle<EcalRecHitCollection> endcapRecHitsHandle;
    //edm::Handle<EcalRecHitCollection> esRecHitsHandle;
@@ -344,15 +421,17 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
        
        DetId seedDetId = (theRecoEl[j].superCluster()->seed()->hitsAndFractions())[0].first;
        bool isBarrel = (seedDetId.subdetId() == EcalBarrel);
-       eleE_         = theRecoEl[j].energy();
-       elePt_        = theRecoEl[j].pt();
-       eleEta_       = theRecoEl[j].eta();
-       elePhi_       = theRecoEl[j].phi();
-
+       eleE_.push_back(theRecoEl[j].energy());
+       elePt_.push_back(theRecoEl[j].pt());
+       eleEta_.push_back(theRecoEl[j].eta());
+       elePhi_.push_back(theRecoEl[j].phi());
+       eleSCEta_.push_back(theRecoEl[j].superCluster()->eta());
+       eleSCPhi_.push_back(theRecoEl[j].superCluster()->phi());
+       
        ///find the matrix of crystals in 5x5 array around the crystal
        //https://cmssdt.cern.ch/lxr/source/RecoEcal/EgammaCoreTools/interface/EcalClusterTools.h#0869
        std::vector<DetId> v_id = noZS::EcalClusterTools::matrixDetId(caloTopology_.product(), seedDetId, 2);
-       nCrys_ = (int) v_id.size();
+       nCrys_.push_back((int) v_id.size());
 
        std::vector<double> hitsEnergy;
        std::vector<double> hitsEnergyWeight;
@@ -360,11 +439,19 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
        //std::vector<std::vector<double>> hitsAmplitudes = getTimeSamplesAroundEle(v_id, pEBDigi, pEEDigi, EBRecHits, EERecHits, thresholds, hitsEnergy, hitsThr);
        std::vector<std::vector<double>> hitsAmplitudes = getTimeSamplesAroundEle(v_id, pEBDigi, pEEDigi, EBRecHits, EERecHits, EBRecHitsWeight, EERecHitsWeight, hitsEnergy, hitsEnergyWeight);
-       hitsAmplitudes_ = hitsAmplitudes;
-       hitsEnergy_ = hitsEnergy;
-       hitsEnergyWeight_ = hitsEnergyWeight;
+       //hitsAmplitudes_ = hitsAmplitudes;
+       std::vector<std::vector<double>> hitsamp;
+
+       for (const auto& innerVec : hitsAmplitudes) {
+	 hitsamp.push_back(innerVec);
+       }
+
+       hitsAmplitudes_.push_back(hitsamp);
+       
+       hitsEnergy_.push_back(hitsEnergy);
+       hitsEnergyWeight_.push_back(hitsEnergyWeight);
        //hitsThr_ = hitsThr;
-       e5x5_ = theRecoEl[j].e5x5();
+       e5x5_.push_back(theRecoEl[j].e5x5());
 
        
        /*gendR_ = 999;
@@ -398,8 +485,10 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
 	 }
 	 icrys++;
        }
-       treeEle->Fill();
+
      }///end of electron loop
+
+     treeEle->Fill();
    }//if (electronHandle.isValid())
 
 
@@ -531,13 +620,18 @@ ECALTimeSampleAnalyser::beginJob()
   treeEle->Branch("eleE",                    &eleE_);
   treeEle->Branch("elePt",                   &elePt_);
   treeEle->Branch("eleEta",                  &eleEta_);
+  treeEle->Branch("eleSCEta",                  &eleSCEta_);
   treeEle->Branch("elePhi",                  &elePhi_);
+  treeEle->Branch("eleSCPhi",                 &eleSCPhi_);
   treeEle->Branch("hitsAmplitudes",         &hitsAmplitudes_);
   treeEle->Branch("hitsEnergy",         &hitsEnergy_);
   treeEle->Branch("hitsEnergyWeight",         &hitsEnergyWeight_);
   //treeEle->Branch("hitsThr",         &hitsThr_);
   treeEle->Branch("nsamples",         &nsamples_);
   treeEle->Branch("e5x5",         &e5x5_);
+  treeEle->Branch("nVtx",                 &nVtx_);
+  treeEle->Branch("rho",                  &rho_);
+  
   /*treeEle->Branch("genPt",         &genPt_);
   treeEle->Branch("genEta",         &genEta_);
   treeEle->Branch("genPhi",         &genPhi_);

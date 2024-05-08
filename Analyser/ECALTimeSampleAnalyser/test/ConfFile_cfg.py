@@ -85,7 +85,8 @@ process.timeSample = cms.EDAnalyzer('ECALTimeSampleAnalyser',
 
                                     ebRecHitWeightCollection = cms.InputTag("ecalRecHitWeight", "EcalRecHitsEBWeight"),
                                     eeRecHitWeightCollection = cms.InputTag("ecalRecHitWeight", "EcalRecHitsEEWeight"),
-                                    
+                                    rhoLabel   = cms.InputTag("fixedGridRhoFastjetAll"),
+                                    VtxLabel             = cms.InputTag("offlinePrimaryVertices"),
                                     #electronSrc          = cms.InputTag("selectedPatElectrons"),
                                     #photonSrc            = cms.InputTag("selectedPatPhotons")
                                     #recoEleSrc            = cms.InputTag("gedGsfElectrons") ,
