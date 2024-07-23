@@ -43,13 +43,70 @@ config.Data.useParent                   = False
 # dataset dependent configuration
 
 config.JobType.psetName     = 'ConfFile_cfg.py'
-config.General.requestName = 'EGamma0_Run2023C'
 config.Data.unitsPerJob    = 5
+#config.Data.outLFNDirBase  = '/store/user/shilpi/slewRate'
+config.Data.outLFNDirBase  = '/store/user/shilpi/slewRate/v1'
 
-### to initiate the data transfer - 11th Dec, 2023
+
+config.General.requestName = 'EGamma0_Run2023A'
+config.Data.inputDataset   = '/EGamma0/Run2023A-EcalUncalZElectron-PromptReco-v2/ALCARECO'
+
+
+config.General.requestName = 'EGamma0_Run2023B'
+config.Data.inputDataset   = '/EGamma0/Run2023B-EcalUncalZElectron-PromptReco-v1/ALCARECO'
+
+
+config.General.requestName = 'EGamma0_Run2023C'
 config.Data.inputDataset   = '/EGamma0/Run2023C-EcalUncalZElectron-PromptReco-v1/ALCARECO'
- 
-#config.Data.outLFNDirBase  = '/store/user/shilpi' ### first version here
-config.Data.outLFNDirBase  = '/store/user/shilpi/slewRate'
-#submit(config)
+
+
+
+config.General.requestName = 'EGamma0_Run2023Cv2'
+config.Data.inputDataset   = '/EGamma0/Run2023C-EcalUncalZElectron-PromptReco-v2/ALCARECO'
+
+
+config.General.requestName = 'EGamma0_Run2023Cv3'
+config.Data.inputDataset   = '/EGamma0/Run2023C-EcalUncalZElectron-PromptReco-v3/ALCARECO'
+
+
+config.General.requestName = 'EGamma0_Run2023Cv4'
+config.Data.inputDataset   = '/EGamma0/Run2023C-EcalUncalZElectron-PromptReco-v4/ALCARECO'
+
+
+config.General.requestName = 'EGamma1_Run2023A'
+config.Data.inputDataset   = '/EGamma1/Run2023A-EcalUncalZElectron-PromptReco-v2/ALCARECO'
+
+
+config.General.requestName = 'EGamma1_Run2023B'
+config.Data.inputDataset   = '/EGamma1/Run2023B-EcalUncalZElectron-PromptReco-v1/ALCARECO'
+
+
+config.General.requestName = 'EGamma1_Run2023Cv1'
+config.Data.inputDataset   = '/EGamma1/Run2023C-EcalUncalZElectron-PromptReco-v1/ALCARECO'
+
+
+config.General.requestName = 'EGamma1_Run2023Cv2'
+config.Data.inputDataset   = '/EGamma1/Run2023C-EcalUncalZElectron-PromptReco-v2/ALCARECO'
+
+
+config.General.requestName = 'EGamma1_Run2023Cv3'
+config.Data.inputDataset   = '/EGamma1/Run2023C-EcalUncalZElectron-PromptReco-v3/ALCARECO'
+
+
+config.General.requestName = 'EGamma1_Run2023Cv4'
+config.Data.inputDataset   = '/EGamma1/Run2023C-EcalUncalZElectron-PromptReco-v4/ALCARECO'
+
+
+config.General.requestName = 'EGamma1_Run2023Dv1'
+config.Data.inputDataset   = '/EGamma1/Run2023D-EcalUncalZElectron-PromptReco-v1/ALCARECO'
+
+
+config.General.requestName = 'EGamma1_Run2023Dv2'
+config.Data.inputDataset   = '/EGamma1/Run2023D-EcalUncalZElectron-PromptReco-v2/ALCARECO'
+'''
+'''
+
+
+
+
 

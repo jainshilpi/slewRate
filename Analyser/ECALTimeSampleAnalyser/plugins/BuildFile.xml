@@ -12,6 +12,8 @@
 <use name="FWCore/ServiceRegistry"/>
 <use name="DataFormats/HepMCCandidate"/>
 <use name="DataFormats/VertexReco"/>
+<use name="CondFormats/DataRecord"/>
+<use name="CondFormats/EcalObjects"/>
 <use name="rootcore"/>
 <flags LCG_DICT_XML="classes_def.xml"/>
 <export>

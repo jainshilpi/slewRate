@@ -71,6 +71,9 @@ process.InterimOutput = cms.OutputModule("PoolOutputModule",
 
 process.TFileService = cms.Service("TFileService", fileName = cms.string('timeSampleTree.root'))
 
+from RecoEgamma.EgammaTools.hgcalPhotonIDValueMap_cfi import *
+from RecoLocalCalo.HGCalRecProducers.HGCalRecHit_cfi import dEdX
+
 ###https://cmssdt.cern.ch/lxr/source/RecoEcal/EgammaClusterProducers/python/ecalDigiSelector_cfi.py
 process.timeSample = cms.EDAnalyzer('ECALTimeSampleAnalyser',
                                     #EBdigiCollection = cms.InputTag("selectDigi","selectedEcalEBDigiCollection"),
@@ -83,6 +86,10 @@ process.timeSample = cms.EDAnalyzer('ECALTimeSampleAnalyser',
                                     ebRecHitCollection = cms.InputTag("ecalRecHit", "EcalRecHitsEB"),
                                     eeRecHitCollection = cms.InputTag("ecalRecHit", "EcalRecHitsEE"),
 
+
+                                    EBuncalibrechitCollection = cms.InputTag("ecalMultiFitUncalibRecHit","EcalUncalibRecHitsEB"),
+                                    EEuncalibrechitCollection = cms.InputTag("ecalMultiFitUncalibRecHit","EcalUncalibRecHitsEE"),
+                                    
                                     ebRecHitWeightCollection = cms.InputTag("ecalRecHitWeight", "EcalRecHitsEBWeight"),
                                     eeRecHitWeightCollection = cms.InputTag("ecalRecHitWeight", "EcalRecHitsEEWeight"),
                                     rhoLabel   = cms.InputTag("fixedGridRhoFastjetAll"),
@@ -91,9 +98,19 @@ process.timeSample = cms.EDAnalyzer('ECALTimeSampleAnalyser',
                                     #photonSrc            = cms.InputTag("selectedPatPhotons")
                                     #recoEleSrc            = cms.InputTag("gedGsfElectrons") ,
                                     recoEleSrc            = cms.InputTag("electronRecalibSCAssociator") ,
-                                    genParticleSrc        = cms.InputTag("genParticles")
+                                    genParticleSrc        = cms.InputTag("genParticles"),
                                     #recoPhotonSrc            = cms.InputTag("gedPhotons") ,
-                                )
+
+                                    dEdXWeights = dEdX.weights,
+                                    isoNRings = hgcalPhotonIDValueMap.isoNRings,
+                                    isoDeltaR = hgcalPhotonIDValueMap.isoDeltaR,
+                                    isoDeltaRmin = hgcalPhotonIDValueMap.isoDeltaRmin, 
+                                    EERecHits = hgcalPhotonIDValueMap.EERecHits,
+                                    FHRecHits = hgcalPhotonIDValueMap.FHRecHits,
+                                    BHRecHits = hgcalPhotonIDValueMap.BHRecHits,
+                                    hitMapTag = hgcalPhotonIDValueMap.hitMapTag,
+
+)
 
 
 #"ecalMultiFitUncalibRecHit"   "EcalUncalibRecHitsEB"

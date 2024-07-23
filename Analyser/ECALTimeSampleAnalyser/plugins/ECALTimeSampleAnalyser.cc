@@ -53,6 +53,12 @@
 #include "CondFormats/DataRecord/interface/EcalPFRecHitThresholdsRcd.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
+//#include "RecoEgamma/EgammaTools/interface/HGCalEgammaIDHelper.h"
+
+#include "RecoLocalCalo/EcalRecAlgos/interface/EigenMatrixTypes.h"
+
+#include "CondFormats/DataRecord/interface/EcalPulseShapesRcd.h"
+#include "CondFormats/EcalObjects/interface/EcalPulseShapes.h"
 
 #include <TTree.h>
 #include <TLorentzVector.h>
@@ -85,7 +91,7 @@ class ECALTimeSampleAnalyser : public edm::one::EDAnalyzer<edm::one::SharedResou
       virtual void endJob() override;
   //virtual std::vector<std::array<double, NMAXSAMPLES> > getTimeSamplesAroundEle(std::vector<DetId> v_id, edm::Handle<EBDigiCollection> pEBDigi, edm::Handle<EEDigiCollection> pEEDigi);
   //virtual std::vector<std::vector<double> > getTimeSamplesAroundEle(std::vector<DetId> v_id, edm::Handle<EBDigiCollection> pEBDigi, edm::Handle<EEDigiCollection> pEEDigi, const EcalRecHitCollection* EBRecHits, const EcalRecHitCollection* EERecHits,  const EcalPFRecHitThresholds* thresholds, std::vector<double> &hitsEnergy, std::vector<double> &hitsThr);
-  virtual std::vector<std::vector<double> > getTimeSamplesAroundEle(std::vector<DetId> v_id, edm::Handle<EBDigiCollection> pEBDigi, edm::Handle<EEDigiCollection> pEEDigi, const EcalRecHitCollection* EBRecHits, const EcalRecHitCollection* EERecHits,  const EcalRecHitCollection* EBRecHitsWeight, const EcalRecHitCollection* EERecHitsWeight,  std::vector<double> &hitsEnergy, std::vector<double> &hitsEnergyWeight);
+  virtual std::vector<std::vector<double> > getTimeSamplesAroundEle(std::vector<DetId> v_id, edm::Handle<EBDigiCollection> pEBDigi, edm::Handle<EEDigiCollection> pEEDigi, const EcalRecHitCollection* EBRecHits, const EcalRecHitCollection* EERecHits,  const EcalRecHitCollection* EBRecHitsWeight, const EcalRecHitCollection* EERecHitsWeight, const EBUncalibratedRecHitCollection* EBUncalibRecHit, const EEUncalibratedRecHitCollection* EEUncalibRecHit, std::vector<double> &hitsEnergy, std::vector<double> &hitsEnergyWeight, std::vector<double> &hitsAmp,  std::vector<double> &hitsAmpError, std::vector<std::vector<double>> &hitsOOAmp, std::vector<std::vector<double>> &hitsPUSubSamples);
 
   virtual std::vector<reco::GenParticle>::const_iterator  getGenMatch(std::vector<std::vector<reco::GenParticle>::const_iterator> genLep, reco::GsfElectron gsfele, double &dRmin);
   
@@ -106,6 +112,9 @@ class ECALTimeSampleAnalyser : public edm::one::EDAnalyzer<edm::one::SharedResou
       edm::EDGetTokenT<EcalRecHitCollection>           ebRecHitCollectionWeight_;
       edm::EDGetTokenT<EcalRecHitCollection>           eeRecHitCollectionWeight_;
   
+  edm::EDGetTokenT<EBUncalibratedRecHitCollection> EBuncalibrechitCollection_;
+  edm::EDGetTokenT<EEUncalibratedRecHitCollection> EEuncalibrechitCollection_;
+  
   //edm::EDGetTokenT<EcalRecHitCollection>           esRecHitCollection_;
   
       edm::ESHandle<EcalPedestals> peds;
@@ -114,18 +123,51 @@ class ECALTimeSampleAnalyser : public edm::one::EDAnalyzer<edm::one::SharedResou
       edm::ESGetToken<EcalGainRatios, EcalGainRatiosRcd> gainsToken_;
   edm::EDGetTokenT<reco::VertexCollection>         vtxLabel_;
   edm::EDGetTokenT<double>                         rhoLabel_;
+
+   edm::ESHandle<EcalPulseShapes> pulseshapes;
+   edm::ESGetToken<EcalPulseShapes, EcalPulseShapesRcd> pulseShapesToken_;
+  
+  //std::vector<double> m_EBPulseShapeTemplate, m_EEPulseShapeTemplate;
+   std::vector<double> ebPulseShape_;
+  std::vector<double> eePulseShape_;
+
+  std::vector<int> activeBX;
   
   //const std::string ebdigiProducer_;
 
   TTree   *treeEle;
   TTree   *treePho;
 
+  Int_t       run_;
+  Long64_t    event_;
+  Int_t       lumis_;
   std::vector<double> eleEta_;
   std::vector<double> elePhi_;
   std::vector<double> elePt_;
   std::vector<double> eleE_;
   std::vector<double> eleSCEta_;
   std::vector<double> eleSCPhi_;
+  std::vector<float>  eleHoverE_;
+  std::vector<float>  eleSigmaIEtaIEtaFull5x5_;
+  std::vector<float>  eleSigmaIPhiIPhiFull5x5_;
+  std::vector<float>  eleE1x5Full5x5_;
+  std::vector<float>  eleE2x5Full5x5_;
+  std::vector<float>  eleE5x5Full5x5_;
+  std::vector<float>  eleR9Full5x5_;
+  std::vector<float>  eledEtaAtVtx_;
+  std::vector<float>  eledPhiAtVtx_;
+  std::vector<float>  eledEtaAtCalo_;
+  std::vector<float>  eleEoverP_;
+  std::vector<float>  eleEoverPout_;
+  std::vector<float>  eleEoverPInv_;
+  std::vector<float>  eleBrem_;
+    
+  
+  std::vector<float>  elePFChIso_;
+  std::vector<float>  elePFPhoIso_;
+  std::vector<float>  elePFNeuIso_;
+  std::vector<float>  elePFPUIso_;
+
   
   std::vector<double> e5x5_; 
   std::vector<int> nCrys_;
@@ -138,7 +180,11 @@ class ECALTimeSampleAnalyser : public edm::one::EDAnalyzer<edm::one::SharedResou
   //std::vector<std::map<int,std::vector<double>>> hitsAmplitudes_;
   std::vector<std::vector<double>> hitsEnergy_;
   std::vector<std::vector<double>> hitsEnergyWeight_;
-
+  std::vector<std::vector<double>> hitsMFAmp_;
+  std::vector<std::vector<double>> hitsMFAmpErr_;
+  std::vector<std::vector<std::vector<double>>> hitsMFOOTAmp_;
+  std::vector<std::vector<std::vector<double>>> hitsAmplitudesPUSub_;
+  
   Int_t       nVtx_;
   float       rho_;
   
@@ -171,6 +217,10 @@ ECALTimeSampleAnalyser::ECALTimeSampleAnalyser(const edm::ParameterSet& iConfig)
   ebRecHitCollection_ = consumes<EcalRecHitCollection>          (iConfig.getParameter<edm::InputTag>("ebRecHitCollection"));
   eeRecHitCollection_ = consumes<EcalRecHitCollection>          (iConfig.getParameter<edm::InputTag>("eeRecHitCollection"));
 
+  EBuncalibrechitCollection_ = consumes<EBUncalibratedRecHitCollection>          (iConfig.getParameter<edm::InputTag>("EBuncalibrechitCollection"));
+  EEuncalibrechitCollection_ = consumes<EBUncalibratedRecHitCollection>          (iConfig.getParameter<edm::InputTag>("EEuncalibrechitCollection"));
+
+  
   ebRecHitCollectionWeight_ = consumes<EcalRecHitCollection>          (iConfig.getParameter<edm::InputTag>("ebRecHitWeightCollection"));
   eeRecHitCollectionWeight_ = consumes<EcalRecHitCollection>          (iConfig.getParameter<edm::InputTag>("eeRecHitWeightCollection"));
 
@@ -178,12 +228,25 @@ ECALTimeSampleAnalyser::ECALTimeSampleAnalyser(const edm::ParameterSet& iConfig)
   vtxLabel_                  = consumes<reco::VertexCollection>        (iConfig.getParameter<edm::InputTag>("VtxLabel"));
   
   //esRecHitCollection_ = consumes<EcalRecHitCollection>          (iConfig.getParameter<edm::InputTag>("esRecHitCollection"));
-  
+  //m_EBPulseShapeTemplate = iConfig.getParameter<std::vector<double> >("EBPulseShapeTemplate");
+  //m_EEPulseShapeTemplate = iConfig.getParameter<std::vector<double> >("EEPulseShapeTemplate");
+   pulseShapesToken_ = esConsumes<EcalPulseShapes, EcalPulseShapesRcd>();
 
   caloTopoToken_ = esConsumes();
   pedsToken_ = esConsumes<EcalPedestals, EcalPedestalsRcd>();
   gainsToken_ = esConsumes<EcalGainRatios, EcalGainRatiosRcd>();
-  
+
+  //activeBX.resize(10);
+  activeBX.push_back(-5);
+  activeBX.push_back(-4);
+  activeBX.push_back(-3);
+  activeBX.push_back(-2);
+  activeBX.push_back(-1);
+  activeBX.push_back(0);
+  activeBX.push_back(1);
+  activeBX.push_back(2);
+  activeBX.push_back(3);
+  activeBX.push_back(4);
   //genParticlesCollection_   = consumes<std::vector<reco::GenParticle> >    (iConfig.getParameter<edm::InputTag>("genParticleSrc"));
   
 }
@@ -212,8 +275,17 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
   ///pedestal subtraction ---> 
   ///https://cmssdt.cern.ch/lxr/source/RecoLocalCalo/EcalRecAlgos/src/EcalUncalibRecHitMultiFitAlgo.cc#0064
 
-   using namespace edm;
+  ///https://cmssdt.cern.ch/lxr/source/Validation/EcalRecHits/python/ecalRecHitsValidation_cfi.py
 
+  ///ECAL Pulse shape: https://cmssdt.cern.ch/lxr/source/CondTools/Ecal/src/EcalPulseShapesHandler.cc#0018
+
+  ///https://cmssdt.cern.ch/lxr/source/RecoLocalCalo/EcalRecProducers/plugins/EcalUncalibRecHitWorkerMultiFit.cc#0440
+  
+   using namespace edm;
+   run_    = iEvent.id().run();
+   event_  = iEvent.id().event();
+   lumis_  = iEvent.luminosityBlock();
+   
    eleEta_.clear();
    elePhi_.clear();
 
@@ -222,8 +294,29 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
    
    elePt_.clear();
    eleE_.clear();
-   nCrys_.clear();
+
    e5x5_.clear();
+   nCrys_.clear();
+
+   eleHoverE_                  .clear();
+   eleEoverP_                  .clear();
+   eleEoverPout_               .clear();
+   eleEoverPInv_               .clear();
+   eleBrem_                    .clear();
+   eledEtaAtVtx_               .clear();
+   eledPhiAtVtx_               .clear();
+   eledEtaAtCalo_              .clear();
+   eleSigmaIEtaIEtaFull5x5_    .clear();
+   eleSigmaIPhiIPhiFull5x5_    .clear();
+   elePFChIso_                 .clear();
+   elePFPhoIso_                .clear();
+   elePFNeuIso_                .clear();
+   elePFPUIso_                 .clear();
+   eleE1x5Full5x5_             .clear();
+   eleE2x5Full5x5_             .clear();
+   eleE5x5Full5x5_             .clear();
+   eleR9Full5x5_               .clear();
+   
    
    // Iterate over each element of the outer vector
    for (auto& outerVec : hitsAmplitudes_) {
@@ -237,6 +330,35 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
    }
    // Clear the outer vector
    hitsAmplitudes_.clear();
+
+
+   // Iterate over each element of the outer vector
+   for (auto& outerVec : hitsMFOOTAmp_) {
+     // Iterate over each element of the middle vector
+     for (auto& middleVec : outerVec) {
+       // Clear each inner vector
+       middleVec.clear();
+     }
+     // Clear the middle vector
+     outerVec.clear();
+   }
+   // Clear the outer vector
+   hitsMFOOTAmp_.clear();
+
+   // Iterate over each element of the outer vector
+   for (auto& outerVec : hitsAmplitudesPUSub_) {
+     // Iterate over each element of the middle vector
+     for (auto& middleVec : outerVec) {
+       // Clear each inner vector
+       middleVec.clear();
+     }
+     // Clear the middle vector
+     outerVec.clear();
+   }
+   // Clear the outer vector
+   hitsAmplitudesPUSub_.clear();
+
+
    
    
  
@@ -252,7 +374,21 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
    for (auto& innerVec : hitsEnergyWeight_) {
      innerVec.clear();
    }
- 
+
+   hitsMFAmp_.clear();
+   // Iterate through each inner vector and clear them
+   for (auto& innerVec : hitsMFAmp_) {
+     innerVec.clear();
+   }
+
+   hitsMFAmpErr_.clear();
+   // Iterate through each inner vector and clear them
+   for (auto& innerVec : hitsMFAmpErr_) {
+     innerVec.clear();
+   }
+
+   
+   
    //hitsThr_.clear();
 
    //hitsAmplitudes_.clear();
@@ -295,8 +431,33 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
      }
    } else
      edm::LogWarning("ggNtuplizer") << "Primary vertices info not unavailable";
+
+
+   ///ECAL pulse shapes
+   pulseshapes = iSetup.getHandle(pulseShapesToken_);
+
+   ///ECAL multifit uncalib rechits
+   const EBUncalibratedRecHitCollection *EBUncalibRecHit = nullptr;
+   Handle<EBUncalibratedRecHitCollection> EcalUncalibRecHitEB;
+   iEvent.getByToken(EBuncalibrechitCollection_, EcalUncalibRecHitEB);
+   if (EcalUncalibRecHitEB.isValid()) {
+     EBUncalibRecHit = EcalUncalibRecHitEB.product();
+   } else {
+     std::cout<<"EBUncalibRecHit collection now found!!!!"<<std::endl;
+   }
+ 
+   const EEUncalibratedRecHitCollection *EEUncalibRecHit = nullptr;
+   Handle<EEUncalibratedRecHitCollection> EcalUncalibRecHitEE;
+   iEvent.getByToken(EEuncalibrechitCollection_, EcalUncalibRecHitEE);
+   if (EcalUncalibRecHitEE.isValid()) {
+     EEUncalibRecHit = EcalUncalibRecHitEE.product();
+   } else {
+     std::cout<<"EEUncalibRecHit collection now found!!!!"<<std::endl;
+   }
+
+
    
-  //// nominal ECAL rechits from multifit method
+   //// nominal ECAL rechits from multifit method
    edm::Handle<EcalRecHitCollection> barrelRecHitsHandle;
    edm::Handle<EcalRecHitCollection> endcapRecHitsHandle;
    //edm::Handle<EcalRecHitCollection> esRecHitsHandle;
@@ -427,7 +588,34 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
        elePhi_.push_back(theRecoEl[j].phi());
        eleSCEta_.push_back(theRecoEl[j].superCluster()->eta());
        eleSCPhi_.push_back(theRecoEl[j].superCluster()->phi());
+
+       eleSigmaIEtaIEtaFull5x5_    .push_back(theRecoEl[j].full5x5_sigmaIetaIeta());
+       eleSigmaIPhiIPhiFull5x5_    .push_back(theRecoEl[j].full5x5_sigmaIphiIphi());
+       eleE1x5Full5x5_             .push_back(theRecoEl[j].full5x5_e1x5());
+       eleE2x5Full5x5_             .push_back(theRecoEl[j].full5x5_e2x5Max());
+       eleE5x5Full5x5_             .push_back(theRecoEl[j].full5x5_e5x5());
+       eleR9Full5x5_               .push_back(theRecoEl[j].full5x5_r9());
+
+       eleHoverE_          .push_back(theRecoEl[j].hcalOverEcal());
+       eledEtaAtVtx_       .push_back(theRecoEl[j].deltaEtaSuperClusterTrackAtVtx());
+       eledPhiAtVtx_       .push_back(theRecoEl[j].deltaPhiSuperClusterTrackAtVtx());
+       eledEtaAtCalo_      .push_back(theRecoEl[j].deltaEtaSeedClusterTrackAtCalo());
+
+       eleEoverP_          .push_back(theRecoEl[j].eSuperClusterOverP());
+       eleEoverPout_       .push_back(theRecoEl[j].eEleClusterOverPout());
+       eleBrem_            .push_back(theRecoEl[j].fbrem());
+    
+       if (theRecoEl[j].ecalEnergy() == 0)   eleEoverPInv_.push_back(1e30);
+       else if (!std::isfinite(theRecoEl[j].ecalEnergy()))  eleEoverPInv_.push_back(1e30);
+       else  eleEoverPInv_.push_back((1.0 - theRecoEl[j].eSuperClusterOverP())/theRecoEl[j].ecalEnergy());
        
+       reco::GsfElectron::PflowIsolationVariables pfIso = theRecoEl[j].pfIsolationVariables();
+       elePFChIso_         .push_back(pfIso.sumChargedHadronPt);
+       elePFPhoIso_        .push_back(pfIso.sumPhotonEt);
+       elePFNeuIso_        .push_back(pfIso.sumNeutralHadronEt);
+	elePFPUIso_         .push_back(pfIso.sumPUPt);
+	
+	
        ///find the matrix of crystals in 5x5 array around the crystal
        //https://cmssdt.cern.ch/lxr/source/RecoEcal/EgammaCoreTools/interface/EcalClusterTools.h#0869
        std::vector<DetId> v_id = noZS::EcalClusterTools::matrixDetId(caloTopology_.product(), seedDetId, 2);
@@ -435,24 +623,53 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
        std::vector<double> hitsEnergy;
        std::vector<double> hitsEnergyWeight;
+       std::vector<double> hitsAmp;
+       std::vector<double> hitsAmpError;
+       std::vector<std::vector<double>> hitsOOAmp;
+       std::vector<std::vector<double>> hitsPUSubSamples;
        //std::vector<double> hitsThr;
 
        //std::vector<std::vector<double>> hitsAmplitudes = getTimeSamplesAroundEle(v_id, pEBDigi, pEEDigi, EBRecHits, EERecHits, thresholds, hitsEnergy, hitsThr);
-       std::vector<std::vector<double>> hitsAmplitudes = getTimeSamplesAroundEle(v_id, pEBDigi, pEEDigi, EBRecHits, EERecHits, EBRecHitsWeight, EERecHitsWeight, hitsEnergy, hitsEnergyWeight);
-       //hitsAmplitudes_ = hitsAmplitudes;
-       std::vector<std::vector<double>> hitsamp;
+       std::vector<std::vector<double>> hitsAmplitudes = getTimeSamplesAroundEle(v_id, pEBDigi, pEEDigi, EBRecHits, EERecHits, EBRecHitsWeight, EERecHitsWeight, EBUncalibRecHit, EEUncalibRecHit,
+										 hitsEnergy, hitsEnergyWeight,
+										 hitsAmp, hitsAmpError, hitsOOAmp,
+										 hitsPUSubSamples);
+       /*
+       std::cout<<"Electron pT "<<theRecoEl[j].pt()<<std::endl;
 
-       for (const auto& innerVec : hitsAmplitudes) {
-	 hitsamp.push_back(innerVec);
+       for(int ic=0; ic<(int)hitsAmplitudes.size(); ic++){
+
+	 const auto& outerVec = hitsAmplitudes[ic];
+	 std::cout<<"hit E : hit WE : "<<hitsEnergy[ic]<<" "<<hitsEnergyWeight[ic]<<std::endl;
+
+	 for (size_t j = 0; j < outerVec.size(); ++j) {
+
+	   std::cout<<outerVec[j]<<std::endl;
+	 }
        }
-
-       hitsAmplitudes_.push_back(hitsamp);
+       */
+       
+       hitsAmplitudes_.push_back(hitsAmplitudes);
        
        hitsEnergy_.push_back(hitsEnergy);
        hitsEnergyWeight_.push_back(hitsEnergyWeight);
        //hitsThr_ = hitsThr;
+       hitsMFAmp_.push_back(hitsAmp);
+       hitsMFAmpErr_.push_back(hitsAmpError);
+       hitsMFOOTAmp_.push_back(hitsOOAmp);
+       hitsAmplitudesPUSub_.push_back(hitsPUSubSamples);
        e5x5_.push_back(theRecoEl[j].e5x5());
 
+       /*
+       ///SJ
+       for(int ioo=0; ioo<(int)hitsOOAmp.size(); ioo++){
+	 
+	 std::cout<<"SJ!!! Printing OOA in the calling function "<<std::endl;
+	 for(int ibx=0; ibx<(int)hitsOOAmp[ioo].size(); ibx++){
+	   std::cout<<"SJ!!! ibx : amp "<<ibx<<" "<<hitsOOAmp[ioo][ibx]<<std::endl;
+	 }
+       }
+       */
        
        /*gendR_ = 999;
        std::vector<reco::GenParticle>::const_iterator genMatch = getGenMatch(genLep, theRecoEl[j], gendR_);
@@ -473,7 +690,7 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
        }
        */
        
-       int icrys = 0;
+       /* int icrys = 0;
        int isample = 0;
        for (const auto& array : hitsAmplitudes) {
 	 isample = 0;
@@ -485,9 +702,44 @@ ECALTimeSampleAnalyser::analyze(const edm::Event& iEvent, const edm::EventSetup&
 	 }
 	 icrys++;
        }
+       */
 
      }///end of electron loop
+   
+     //// check
+     // Function to print a vector of vectors of vectors of doubles
+     /*
+     // Iterate over each element of the outer vector
+     for (const auto& outerVec : hitsAmplitudes_) {
+       // Iterate over each element of the middle vector
+       for (const auto& middleVec : outerVec) {
+	 // Iterate over each element of the inner vector
+	 for (const auto& innerVec : middleVec) {
+	   // Print each double value
+	   std::cout << innerVec << " "<<std::endl;
+	   std::cout << std::endl; // Newline after printing inner vector
+	 }
+	 std::cout << std::endl; // Extra newline after printing middle vector
+       }
+       std::cout << std::endl; // Extra newline after printing outer vector
+     }
+*/
 
+     /*
+     ///SJ
+     std::cout<<"In that event, info abt the OOT amp "<<std::endl;
+     for(int iel=0; iel<(int)hitsMFOOTAmp_.size(); iel++){
+       for(int ioo=0; ioo<(int)hitsMFOOTAmp_[iel].size(); ioo++){
+	 
+	 std::cout<<"SJ!!!after full loop; Printing OOA in the calling function "<<std::endl;
+	 for(int ibx=0; ibx<(int)hitsMFOOTAmp_[iel][ioo].size(); ibx++){
+	   std::cout<<"SJ!!!after full loop ibx : amp "<<ibx<<" "<<hitsMFOOTAmp_[iel][ioo][ibx]<<std::endl;
+	 }
+       }
+     }
+     */
+
+     
      treeEle->Fill();
    }//if (electronHandle.isValid())
 
@@ -617,6 +869,9 @@ ECALTimeSampleAnalyser::beginJob()
   treeEle    = fs->make<TTree>("EventTreeEle", "Event data");
 
   //
+  treeEle->Branch("run",                  &run_);
+  treeEle->Branch("event",                &event_);
+  treeEle->Branch("lumis",                &lumis_);
   treeEle->Branch("eleE",                    &eleE_);
   treeEle->Branch("elePt",                   &elePt_);
   treeEle->Branch("eleEta",                  &eleEta_);
@@ -626,8 +881,37 @@ ECALTimeSampleAnalyser::beginJob()
   treeEle->Branch("hitsAmplitudes",         &hitsAmplitudes_);
   treeEle->Branch("hitsEnergy",         &hitsEnergy_);
   treeEle->Branch("hitsEnergyWeight",         &hitsEnergyWeight_);
+
+  treeEle->Branch("hitsAmplitudesPUSub",         &hitsAmplitudesPUSub_);
+  treeEle->Branch("hitsMFAmp",         &hitsMFAmp_);
+  treeEle->Branch("hitsMFAmpErr",         &hitsMFAmpErr_);
+  treeEle->Branch("hitsMFOOTAmp",         &hitsMFOOTAmp_);
+  
+
+  treeEle->Branch("eleHoverE",               &eleHoverE_);
+  treeEle->Branch("eleEoverP",               &eleEoverP_);
+  treeEle->Branch("eleEoverPout",            &eleEoverPout_);
+  treeEle->Branch("eleEoverPInv",            &eleEoverPInv_);
+  treeEle->Branch("eleBrem",                 &eleBrem_);
+  treeEle->Branch("eledEtaAtVtx",            &eledEtaAtVtx_);
+  treeEle->Branch("eledPhiAtVtx",            &eledPhiAtVtx_);
+  treeEle->Branch("eledEtaAtCalo",           &eledEtaAtCalo_);
+  treeEle->Branch("eleSigmaIEtaIEtaFull5x5", &eleSigmaIEtaIEtaFull5x5_);
+  treeEle->Branch("eleSigmaIPhiIPhiFull5x5", &eleSigmaIPhiIPhiFull5x5_);
+
+  treeEle->Branch("elePFChIso",              &elePFChIso_);
+  treeEle->Branch("elePFPhoIso",             &elePFPhoIso_);
+  treeEle->Branch("elePFNeuIso",             &elePFNeuIso_);
+  treeEle->Branch("elePFPUIso",              &elePFPUIso_);
+  treeEle->Branch("eleE1x5Full5x5",          &eleE1x5Full5x5_);
+  treeEle->Branch("eleE2x5Full5x5",          &eleE2x5Full5x5_);
+  treeEle->Branch("eleE5x5Full5x5",          &eleE5x5Full5x5_);
+  treeEle->Branch("eleR9Full5x5",                &eleR9Full5x5_);
+  
+  
   //treeEle->Branch("hitsThr",         &hitsThr_);
   treeEle->Branch("nsamples",         &nsamples_);
+  treeEle->Branch("nCrys",         &nCrys_);
   treeEle->Branch("e5x5",         &e5x5_);
   treeEle->Branch("nVtx",                 &nVtx_);
   treeEle->Branch("rho",                  &rho_);
@@ -671,10 +955,17 @@ std::vector<std::vector<double>> ECALTimeSampleAnalyser::getTimeSamplesAroundEle
 										 const EcalRecHitCollection* EBRecHits, 
 										 const EcalRecHitCollection* EERecHits,
 										 const EcalRecHitCollection* EBRecHitsWeight, 
-										 const EcalRecHitCollection* EERecHitsWeight, 
+										 const EcalRecHitCollection* EERecHitsWeight,
+										 const EBUncalibratedRecHitCollection* EBUncalibRecHit,
+										 const EEUncalibratedRecHitCollection* EEUncalibRecHit,
 										 //const EcalPFRecHitThresholds* thresholds,
 										 std::vector<double> &hitsEnergy,
-										 std::vector<double> &hitsEnergyWeight){
+										 std::vector<double> &hitsEnergyWeight,
+										 std::vector<double> &hitsAmp,
+										 std::vector<double> &hitsAmpError,
+										 std::vector<std::vector<double>> &hitsOOAmp,
+										 std::vector<std::vector<double>> &hitsPUSubSamples
+										 ){
                                                                                  //std::vector<double> &hitsThr){
   
   //// follow ecalmultifit algo as linked in teh analyse function above and do the pedestal subtraction. link also given below
@@ -684,8 +975,9 @@ std::vector<std::vector<double>> ECALTimeSampleAnalyser::getTimeSamplesAroundEle
 
   //using sampleType = std::array<double, NMAXSAMPLES>;
   std::vector<std::vector<double>> hitTimeSamples;
-
   
+   FullSampleVector fullpulse(FullSampleVector::Zero());
+   
     for (const auto& id : v_id) {
 
       /*
@@ -702,17 +994,61 @@ std::vector<std::vector<double>> ECALTimeSampleAnalyser::getTimeSamplesAroundEle
       const EcalMGPAGainRatio* aGain = nullptr;
       
       std::vector<double> amplitudes(NMAXSAMPLES);
+      std::vector<double> ootAmp_(activeBX.size());
+      std::vector<double> PUSubSamples(NMAXSAMPLES);
+	    
       for(int isample=0; isample<NMAXSAMPLES; isample++){
 	amplitudes[isample] = -99.;
+	PUSubSamples[isample] = -99.;
+      }
+
+      for(int isample=0; isample<(int)activeBX.size(); isample++){ 
+	ootAmp_[isample] = -99.;
       }
       
       double rechitEn = -99;
       double rechitEnWeight = -99;
+      double amp_, ampError_;
       
+      const EcalPulseShapes::Item* aPulse = nullptr;
+      //std::cout<<" "<<std::endl;
+      //std::cout<<"SJ!!! this ID is in EB "<<isBarrel<<std::endl;
       if(isBarrel){
 	
 	//https://cmssdt.cern.ch/lxr/source/CaloOnlineTools/EcalTools/plugins/EcalCosmicsHists.cc#
 
+	EBUncalibratedRecHitCollection::const_iterator itunc =  EBUncalibRecHit->find(id);
+	if(itunc != EBUncalibRecHit->end()){
+	  if ((itunc->checkFlag(EcalUncalibratedRecHit::kPoorReco))){
+	    amp_ = -99;
+	    ampError_ = -99;
+	    for(int ibx=0; ibx<(int)activeBX.size(); ibx++){
+	      ootAmp_[ibx] = -99;
+	    }
+	    
+	  }else{
+	    amp_ = itunc->amplitude();
+	    ampError_ = itunc->amplitudeError();
+	    for(int ibx=0; ibx<(int)activeBX.size(); ibx++){
+	      ootAmp_[ibx] = itunc->outOfTimeAmplitude(ibx);
+	      //std::cout<<"SJ!!! ibx : oot "<<ibx<<" "<<ootAmp_[ibx]<<std::endl;
+	    }
+	  }
+	} else {
+	  amp_ = -99;
+	  ampError_ = -99;
+	  for(int ibx=0; ibx<(int)activeBX.size(); ibx++){
+	    ootAmp_[ibx] = -99;
+	  }
+	}
+	
+	  for (int i = 0; i < EcalPulseShape::TEMPLATESAMPLES; ++i){
+	    fullpulse(i + 7) = -99;
+	  }
+	  
+	  //std::cout<<"SJ!!! size of ootAmp in EB "<<ootAmp_.size()<<std::endl;
+	
+      
 	/// Nominal method
 	EcalRecHitCollection::const_iterator it = EBRecHits->find(id);
 	
@@ -727,7 +1063,7 @@ std::vector<std::vector<double>> ECALTimeSampleAnalyser::getTimeSamplesAroundEle
 	} else {
 	  rechitEn =  0;
 	}
-
+      
 
 	/////Weight method
 	EcalRecHitCollection::const_iterator itw = EBRecHitsWeight->find(id);
@@ -736,6 +1072,7 @@ std::vector<std::vector<double>> ECALTimeSampleAnalyser::getTimeSamplesAroundEle
 	  if ((itw->checkFlag(EcalRecHit::kTowerRecovered) || itw->checkFlag(EcalRecHit::kWeird) ||
 	       (itw->detid().subdetId() == EcalBarrel && itw->checkFlag(EcalRecHit::kDiWeird)))){
 	    rechitEnWeight = 0.0;
+	  
 	  }
 	  else{
 	    rechitEnWeight = itw->energy();
@@ -750,20 +1087,31 @@ std::vector<std::vector<double>> ECALTimeSampleAnalyser::getTimeSamplesAroundEle
 	unsigned int hashedIndex = EBDetId(id).hashedIndex();
 	aped = &peds->barrel(hashedIndex);
 	aGain = &gains->barrel(hashedIndex);
+
+	aPulse = &pulseshapes->barrel(hashedIndex);
 	
+	///https://cmssdt.cern.ch/lxr/source/RecoLocalCalo/EcalRecProducers/plugins/EcalUncalibRecHitWorkerMultiFit.cc#0465
+	for (int i = 0; i < EcalPulseShape::TEMPLATESAMPLES; ++i){
+	  fullpulse(i + 7) = aPulse->pdfval[i];
+	}
+	
+
 	EcalDigiCollection::const_iterator thisdigi = pEBDigi->find(id);
 	if (thisdigi == pEBDigi->end()){
 	  //std::cout<<"ECALTimeSampleAnalyser!!!  WARNING: seedDetId not found in the pEBDigi collection!"<<std::endl;
 	
 	  for(int isample=0; isample<NMAXSAMPLES; isample++){
 	    amplitudes[isample] = -99.;
+	    PUSubSamples[isample] = -99;    
 	  }
 	  hitTimeSamples.push_back(amplitudes);
+	  hitsPUSubSamples.push_back(PUSubSamples);
 	}
 	
 	else{
 	  EBDataFrame df(*thisdigi);
-	  
+
+	  float pulsenorm = 0.;
 	  for (unsigned int i = 0; i < (*thisdigi).size(); i++) {
 	    EcalMGPASample samp_crystal(df.sample(i));
 	    //std::cout<<"ADC of "<<i<<"th sample is "<<samp_crystal.adc()<<" and gain is "<<samp_crystal.gainId()<<std::endl;
@@ -793,21 +1141,80 @@ std::vector<std::vector<double>> ECALTimeSampleAnalyser::getTimeSamplesAroundEle
 	    }
 	    
 	    amplitudes[i] = amplitude;
+	    PUSubSamples[i] = amplitudes[i];
+	    pulsenorm += fullpulse(i);
 	    //std::cout<<"amplitude after sub "<<amplitude<<std::endl;
 	  }///loop over time samples
 	  hitTimeSamples.push_back(amplitudes);
-	}//else when the id is found
+	  
 	
+	  //std::cout<<"======"<<std::endl;
+	  ///PU subtracted (as estimated from multifit subtracted sample)
+	  int ipulse = -1;
+
+	  for (auto const& amplit : ootAmp_) {
+	    ipulse++;
+	    int bxp3 = ipulse - 2;
+	    int firstsamplet = std::max(0, bxp3);
+	    int offset = 7 - bxp3;
+
+	    //std::cout<<"bxp3 : firstsamplet : offset : "<<bxp3<<" "<<firstsamplet<<" "<<offset<<std::endl;
+	    for (unsigned int isample = firstsamplet; isample < NMAXSAMPLES; ++isample) {
+	      auto const pulse = fullpulse(isample + offset);
+	      //std::cout<<"i : amplitudes : amplit : pulse : pulsenorm "<<isample<<" "<<amplitudes[isample]<<" "<<amplit<<" "<<pulse<<" "<<pulsenorm<<std::endl;
+	      PUSubSamples[isample] = std::max(0., amplitudes[isample] - amplit * pulse / pulsenorm);
+	      //std::cout<<"PU subtracted amp till here "<<PUSubSamples[isample]<<std::endl;
+	    }
+	  }//for (auto const& amplit : amplitudes)
+	  
+	}//else when the id is found
+	/*
+	for(int i=0; i<NMAXSAMPLES; i++){
+	  std::cout<<"before PU : PU subt final isample "<<i<<" is "<<amplitudes[i]<<" "<<PUSubSamples[i]<<std::endl;
+	}
+	*/
+	hitsPUSubSamples.push_back(PUSubSamples);
+		    
       }//if(isBarrel)
       
       if(!isBarrel){
 	//https://cmssdt.cern.ch/lxr/source/CaloOnlineTools/EcalTools/plugins/EcalCosmicsHists.cc#
+	
+	EEUncalibratedRecHitCollection::const_iterator itunc =  EEUncalibRecHit->find(id);
+	if(itunc != EEUncalibRecHit->end()){
+	  if ((itunc->checkFlag(EcalUncalibratedRecHit::kPoorReco))){
+	    amp_ = -99;
+	    ampError_ = -99;
+	    for(int ibx=0; ibx<(int)activeBX.size(); ibx++){
+	      ootAmp_[ibx] = -99;
+	    }
+	    
+	  }else{
+	    amp_ = itunc->amplitude();
+	    ampError_ = itunc->amplitudeError();
+	    for(int ibx=0; ibx<(int)activeBX.size(); ibx++){
+	      ootAmp_[ibx] = itunc->outOfTimeAmplitude(ibx);
+	    }
+	  }
+	} else {
+	    amp_ = -99;
+	    ampError_ = -99;
+	    for(int ibx=0; ibx<(int)activeBX.size(); ibx++){
+	      ootAmp_[ibx] = -99;
+	    }
+	}
 
+	for (int i = 0; i < EcalPulseShape::TEMPLATESAMPLES; ++i){
+	  fullpulse(i + 7) = -99;
+	}
+	
+	//std::cout<<"SJ!!! size of ootAmp in EE "<<ootAmp_.size()<<std::endl;
+	
 	/// nominal method
 	EcalRecHitCollection::const_iterator it = EERecHits->find(id);
 	if (it != EERecHits->end()) {
 	  if ((it->checkFlag(EcalRecHit::kTowerRecovered) || it->checkFlag(EcalRecHit::kWeird) ||
-	       (it->detid().subdetId() == EcalBarrel && it->checkFlag(EcalRecHit::kDiWeird)))){
+	       (it->detid().subdetId() == EcalEndcap && it->checkFlag(EcalRecHit::kDiWeird)))){
 	    rechitEn = 0.0;
 	  }
 	  else{
@@ -816,8 +1223,6 @@ std::vector<std::vector<double>> ECALTimeSampleAnalyser::getTimeSamplesAroundEle
 	} else {
 	  rechitEn =  0;
 	}
-
-
 	/////Weight method
 	EcalRecHitCollection::const_iterator itw = EERecHitsWeight->find(id);
 	
@@ -836,14 +1241,29 @@ std::vector<std::vector<double>> ECALTimeSampleAnalyser::getTimeSamplesAroundEle
 	unsigned int hashedIndex = EEDetId(id).hashedIndex();
 	aped = &peds->endcap(hashedIndex);
 	aGain = &gains->endcap(hashedIndex);
+
+	aPulse = &pulseshapes->endcap(hashedIndex);
 	
+	///https://cmssdt.cern.ch/lxr/source/RecoLocalCalo/EcalRecProducers/plugins/EcalUncalibRecHitWorkerMultiFit.cc#0465
+	for (int i = 0; i < EcalPulseShape::TEMPLATESAMPLES; ++i){
+	  fullpulse(i + 7) = aPulse->pdfval[i];
+	}
+      
 	EcalDigiCollection::const_iterator thisdigi = pEEDigi->find(id);
 	if (thisdigi == pEEDigi->end()){
 	  //std::cout<<"ECALTimeSampleAnalyser!!!  WARNING: seedDetId not found in the pEEDigi collection!"<<std::endl;
+	  for(int isample=0; isample<NMAXSAMPLES; isample++){
+	    amplitudes[isample] = -99.;
+	    PUSubSamples[isample] = -99;
+	  }
+	  hitTimeSamples.push_back(amplitudes);
+	  hitsPUSubSamples.push_back(PUSubSamples);
 	}
+	
 	else{
 	  EEDataFrame df(*thisdigi);
-	  
+
+	  float pulsenorm = 0.;
 	  for (unsigned int i = 0; i < (*thisdigi).size(); i++) {
 	    EcalMGPASample samp_crystal(df.sample(i));
 	    //std::cout<<"ADC of "<<i<<"th sample is "<<samp_crystal.adc()<<" and gain is "<<samp_crystal.gainId()<<std::endl;
@@ -873,17 +1293,55 @@ std::vector<std::vector<double>> ECALTimeSampleAnalyser::getTimeSamplesAroundEle
 	    }
 	    
 	    amplitudes[i] = amplitude;
+	    PUSubSamples[i] = amplitudes[i];
 	    //std::cout<<"amplitude after sub "<<amplitude<<std::endl;
-	    
+	    pulsenorm += fullpulse(i);
 	  }//loop over time samples
 	  hitTimeSamples.push_back(amplitudes);
+
+	  ///PU subtracted (as estimated from multifit subtracted sample)
+	  int ipulse = -1;
+	  for (auto const& amplit : ootAmp_) {
+	    ipulse++;
+	    int bxp3 = ipulse - 2;
+	    int firstsamplet = std::max(0, bxp3);
+	    int offset = 7 - bxp3;
+	    
+	    for (unsigned int isample = firstsamplet; isample < NMAXSAMPLES; ++isample) {
+	      auto const pulse = fullpulse(isample + offset);
+	      PUSubSamples[isample] = std::max(0., amplitudes[isample] - amplit * pulse / pulsenorm);
+	    }
+	  }//for (auto const& amplit : amplitudes)
+
 	}//else when the id is found
+	hitsPUSubSamples.push_back(PUSubSamples);
+	
       }//if(!isBarrel)
       hitsEnergy.push_back(rechitEn);
 
       hitsEnergyWeight.push_back(rechitEnWeight);
+    
+      hitsAmp.push_back(amp_);
+      hitsAmpError.push_back(ampError_);
+      hitsOOAmp.push_back(ootAmp_);
+
+      //std::cout<<"# time samples in PUSubSamples : amp : OOTAmp "<<PUSubSamples.size()<<" "<<amplitudes.size()<<" "<<ootAmp_.size()<<std::endl;
     }//for (const auto& id : v_id)
     
+      
+    
+    ///SJ
+    /*
+    for(int ioo=0; ioo<(int)hitsOOAmp.size(); ioo++){
+      
+      std::cout<<"SJ!!! Printing OOA in the called function "<<std::endl;
+      for(int ibx=0; ibx<(int)hitsOOAmp[ioo].size(); ibx++){
+	std::cout<<"SJ!!! ibx : amp "<<ibx<<" "<<hitsOOAmp[ioo][ibx]<<std::endl;
+      }
+    }
+    */
+
+	
     return hitTimeSamples;
     
 }
